@@ -1,0 +1,32 @@
+{
+  "sites": [
+    {
+      "url": "https://techcrunch.com",
+      "name": "TechCrunch"
+    },
+    {
+      "url": "https://arstechnica.com",
+      "name": "Ars Technica"
+    }
+  ],
+  "topics": [
+    "artificial intelligence",
+    "startup",
+    "web development"
+  ],
+  "schedule": {
+    "times": ["09:00", "13:00", "18:00"],
+    "timezone": "Europe/Berlin"
+  },
+  "geminiApiKey": "YOUR_GEMINI_API_KEY",
+  "adminPassword": "changeme",
+  "port": 4000,
+  "twitter": {
+    "appKey": "YOUR_TWITTER_APP_KEY",
+    "appSecret": "YOUR_TWITTER_APP_SECRET",
+    "accessToken": "YOUR_TWITTER_ACCESS_TOKEN",
+    "accessSecret": "YOUR_TWITTER_ACCESS_SECRET"
+  },
+  "language": "en",
+  "style": "mixed"
+}

@@ -1,0 +1,29 @@
+{
+  "name": "auto-poster",
+  "version": "1.0.0",
+  "description": "AI-powered social media auto-poster",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js",
+    "post": "tsc && node dist/index.js --now",
+    "test:crawl": "tsc && node dist/index.js --test-crawl",
+    "test:ai": "tsc && node dist/index.js --test-ai",
+    "dry-run": "tsc && node dist/index.js --dry-run"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "node-cron": "^3.0.3",
+    "twitter-api-v2": "^1.18.2"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.7.0"
+  }
+}
