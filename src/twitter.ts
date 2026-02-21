@@ -10,19 +10,19 @@ export function initTwitterClient(config: TwitterConfig): void {
     accessToken: config.accessToken,
     accessSecret: config.accessSecret,
   });
-  console.log("Twitter API client baslatildi");
+  console.log("X API client baslatildi");
 }
 
 export async function postTweet(text: string): Promise<{ id: string; text: string }> {
   if (!client) {
-    throw new Error("Twitter client baslatilmadi! Once initTwitterClient() cagirin.");
+    throw new Error("X client baslatilmadi! Once initTwitterClient() cagirin.");
   }
 
   try {
     const rwClient = client.readWrite;
     const result = await rwClient.v2.tweet(text);
 
-    console.log(`Tweet gonderildi! ID: ${result.data.id}`);
+    console.log(`Post gonderildi! ID: ${result.data.id}`);
 
     return {
       id: result.data.id,
@@ -33,7 +33,7 @@ export async function postTweet(text: string): Promise<{ id: string; text: strin
     const detail = err?.data?.detail || err?.data?.title || err?.message || "Bilinmeyen hata";
     const errors = err?.data?.errors?.map((e: any) => e.message).join(", ") || "";
     const msg = errors ? `${detail} (${errors})` : detail;
-    console.error("Twitter post hatasi:", JSON.stringify(err?.data || err?.message));
+    console.error("X post hatasi:", JSON.stringify(err?.data || err?.message));
     throw new Error(msg);
   }
 }
@@ -43,10 +43,10 @@ export async function verifyCredentials(): Promise<boolean> {
 
   try {
     const me = await client.v2.me();
-    console.log(`Twitter hesabi dogrulandi: @${me.data.username}`);
+    console.log(`X hesabi dogrulandi: @${me.data.username}`);
     return true;
   } catch (err) {
-    console.error("Twitter kimlik dogrulama hatasi:", (err as Error).message);
+    console.error("X kimlik dogrulama hatasi:", (err as Error).message);
     return false;
   }
 }

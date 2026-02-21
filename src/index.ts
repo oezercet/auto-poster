@@ -11,11 +11,11 @@ async function main(): Promise<void> {
   console.log(`${config.sites.length} site yapilandirildi`);
   console.log(`Dil: ${config.language}, Stil: ${config.style}`);
 
-  // Twitter client baslat (keyler varsa)
+  // X client baslat (keyler varsa)
   if (config.twitter?.appKey && config.twitter.appKey !== "YOUR_API_KEY") {
     initTwitterClient(config.twitter);
   } else {
-    console.log("Twitter API keyleri girilmemis - tweet gonderme devre disi.");
+    console.log("X API keyleri girilmemis - post gonderme devre disi.");
   }
 
   // Scheduler baslat

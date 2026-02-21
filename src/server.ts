@@ -13,18 +13,51 @@ let lastCrawlTime = 0;
 
 const tokens = new Set<string>();
 
+// Login rate limiting: IP bazli brute-force korumasi
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_BLOCK_MS = 15 * 60 * 1000; // 15 dakika
+
+function checkLoginRate(ip: string): boolean {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (!record || now > record.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_BLOCK_MS });
+    return true;
+  }
+  if (record.count >= MAX_LOGIN_ATTEMPTS) return false;
+  record.count++;
+  return true;
+}
+
+function resetLoginRate(ip: string): void {
+  loginAttempts.delete(ip);
+}
+
 function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
 function hashPassword(pw: string): string {
-  return crypto.createHash("sha256").update(pw).digest("hex");
+  const salt = "auto-poster-v1";
+  return crypto.createHash("sha256").update(salt + pw).digest("hex");
 }
 
 function checkPassword(input: string): boolean {
   // Hem plain text hem hash destekle (migration)
   if (config.adminPassword.length === 64 && /^[a-f0-9]+$/.test(config.adminPassword)) {
-    return hashPassword(input) === config.adminPassword;
+    // Onceki saltsiz hash ile de dene (migration)
+    const saltedHash = hashPassword(input);
+    const unsaltedHash = crypto.createHash("sha256").update(input).digest("hex");
+    if (saltedHash === config.adminPassword || unsaltedHash === config.adminPassword) {
+      // Saltsiz hash ise migrate et
+      if (unsaltedHash === config.adminPassword) {
+        config.adminPassword = saltedHash;
+        saveConfig(config);
+      }
+      return true;
+    }
+    return false;
   }
   return input === config.adminPassword;
 }
@@ -42,13 +75,31 @@ export function startServer(cfg: Config): void {
   config = cfg;
   const app = express();
 
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
+
+  // --- Security headers ---
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    next();
+  });
 
   // --- Auth ---
   app.post("/api/login", (req: Request, res: Response) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    if (!checkLoginRate(ip)) {
+      res.status(429).json({ error: "Cok fazla deneme. 15 dakika bekleyin." });
+      return;
+    }
     const { password } = req.body;
+    if (!password || typeof password !== "string") {
+      res.status(400).json({ error: "Sifre gerekli" });
+      return;
+    }
     if (checkPassword(password)) {
+      resetLoginRate(ip);
       const token = generateToken();
       tokens.add(token);
       res.cookie("auth-token", token, {
@@ -107,8 +158,17 @@ export function startServer(cfg: Config): void {
   app.post("/api/generate", async (req: Request, res: Response) => {
     try {
       const { article } = req.body;
-      if (!article) { res.status(400).json({ error: "article gerekli" }); return; }
-      const tweet = await generateTweet(article, config.geminiApiKey, config.language, config.style);
+      if (!article || typeof article.title !== "string" || typeof article.source !== "string") {
+        res.status(400).json({ error: "article (title, source) gerekli" }); return;
+      }
+      const safeArticle: Article = {
+        title: String(article.title).slice(0, 500),
+        summary: String(article.summary || "").slice(0, 1000),
+        url: String(article.url || ""),
+        source: String(article.source).slice(0, 100),
+        sourceUrl: article.sourceUrl ? String(article.sourceUrl).slice(0, 500) : undefined,
+      };
+      const tweet = await generateTweet(safeArticle, config.geminiApiKey, config.language, config.style);
       res.json({ tweet });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
@@ -119,7 +179,8 @@ export function startServer(cfg: Config): void {
   app.post("/api/post-tweet", async (req: Request, res: Response) => {
     try {
       const { text } = req.body;
-      if (!text) { res.status(400).json({ error: "text gerekli" }); return; }
+      if (!text || typeof text !== "string") { res.status(400).json({ error: "text gerekli" }); return; }
+      if (text.length > 500) { res.status(400).json({ error: "Tweet cok uzun (max 500)" }); return; }
       const result = await postTweet(text);
       addPostLog({
         url: "manual",
@@ -204,7 +265,7 @@ export function startServer(cfg: Config): void {
         if (twitter.appSecret) config.twitter.appSecret = twitter.appSecret;
         if (twitter.accessToken) config.twitter.accessToken = twitter.accessToken;
         if (twitter.accessSecret) config.twitter.accessSecret = twitter.accessSecret;
-        // Twitter client'i yeniden baslat
+        // X client'i yeniden baslat
         initTwitterClient(config.twitter);
       }
       saveConfig(config);
@@ -241,8 +302,8 @@ export function startServer(cfg: Config): void {
   app.post("/api/search-topic", async (req: Request, res: Response) => {
     try {
       const { topic } = req.body;
-      if (!topic) { res.status(400).json({ error: "topic gerekli" }); return; }
-      const articles = await searchTopics([topic], config.language);
+      if (!topic || typeof topic !== "string" || topic.length > 200) { res.status(400).json({ error: "topic gerekli (max 200 karakter)" }); return; }
+      const articles = await searchTopics([topic.trim()], config.language);
       res.json({ articles });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
@@ -261,7 +322,7 @@ export function startServer(cfg: Config): void {
     }
   });
 
-  // Twitter verify
+  // X verify
   app.get("/api/twitter-status", async (_req: Request, res: Response) => {
     const ok = await verifyCredentials();
     res.json({ connected: ok });
@@ -445,10 +506,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="card-title" style="margin-bottom:14px">API Keyleri</div>
         <div class="config-grid">
           <div class="config-field"><label>Gemini API Key</label><input id="key-gemini" placeholder="AIzaSy..."></div>
-          <div class="config-field"><label>Twitter API Key</label><input id="key-tw-app" placeholder="App Key"></div>
-          <div class="config-field"><label>Twitter API Secret</label><input id="key-tw-secret" placeholder="App Secret"></div>
-          <div class="config-field"><label>Twitter Access Token</label><input id="key-tw-token" placeholder="Access Token"></div>
-          <div class="config-field"><label>Twitter Access Token Secret</label><input id="key-tw-tokensecret" placeholder="Access Token Secret"></div>
+          <div class="config-field"><label>X (Twitter) API Key</label><input id="key-tw-app" placeholder="App Key"></div>
+          <div class="config-field"><label>X (Twitter) API Secret</label><input id="key-tw-secret" placeholder="App Secret"></div>
+          <div class="config-field"><label>X Access Token</label><input id="key-tw-token" placeholder="Access Token"></div>
+          <div class="config-field"><label>X Access Token Secret</label><input id="key-tw-tokensecret" placeholder="Access Token Secret"></div>
         </div>
         <div style="margin-top:10px"><button class="btn btn-primary" onclick="saveKeys()">API Keyleri Guncelle</button></div>
         <div class="card-meta" style="margin-top:8px">Bos birakilan alanlar degismez. Sadece degistirmek istediginizi girin.</div>
@@ -602,7 +663,7 @@ async function loadLogs(){
 
 async function loadTwitterStatus(){
   const el=document.getElementById('twitter-status');el.textContent='kontrol...';
-  try{const r=await fetch(API+'/api/twitter-status');const d=await r.json();el.innerHTML=d.connected?'<span style="color:#10b981">Twitter bagli</span>':'<span style="color:#f87171">Twitter bagli degil</span>'}catch{el.innerHTML='<span style="color:#f87171">Hata</span>'}
+  try{const r=await fetch(API+'/api/twitter-status');const d=await r.json();el.innerHTML=d.connected?'<span style="color:#10b981">X bagli</span>':'<span style="color:#f87171">X bagli degil</span>'}catch{el.innerHTML='<span style="color:#f87171">Hata</span>'}
 }
 
 // Settings

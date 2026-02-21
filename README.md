@@ -1,28 +1,31 @@
-# Auto-Poster
+# Auto-Poster — AI Social Media Automation Bot
 
-AI-powered social media bot that crawls news sites, generates tweets using Google Gemini, and posts them to X (Twitter) automatically.
+Automated X (Twitter) posting bot powered by Google Gemini AI. Crawls news sites and Google News, generates engaging tweets in 13 languages, and posts them on schedule.
+
+Perfect for content creators, news aggregators, and social media managers who want to automate their X posting workflow.
 
 ## Features
 
-- **Multi-site crawling** — RSS, JSON-LD, and HTML parsing (3-tier strategy)
-- **Google News topic search** — Search any topic via Google News RSS
-- **AI tweet generation** — Google Gemini API with model fallback chain
-- **13 languages** — Turkish, English, German, French, Spanish, Italian, Portuguese, Dutch, Arabic, Russian, Japanese, Korean, Chinese
-- **Smart URL handling** — Auto-resolves Google News redirect URLs to real article links
-- **Freshness filter** — Only shares articles from the last 48 hours
-- **Duplicate detection** — Never posts the same article twice
-- **Scheduled posting** — Cron-based with configurable times and timezone
-- **Web dashboard** — Admin panel with auth, article browser, tweet composer, history, settings
-- **Twitter API v2** — OAuth 1.0a posting with detailed error handling
+- **AI-powered tweet generation** — Google Gemini API creates natural, engaging posts from article summaries
+- **Multi-site news crawling** — RSS, JSON-LD, and HTML parsing with 3-tier fallback strategy
+- **Google News integration** — Search any topic via Google News RSS feed
+- **13 languages supported** — Turkish, English, German, French, Spanish, Italian, Portuguese, Dutch, Arabic, Russian, Japanese, Korean, Chinese
+- **Smart URL resolution** — Automatically resolves Google News redirect URLs to real article links for proper link previews
+- **48-hour freshness filter** — Only shares recent articles, skips outdated content
+- **Duplicate detection** — Tracks posted articles, never shares the same story twice
+- **Scheduled posting** — Cron-based automation with configurable times and timezone
+- **Web dashboard** — Admin panel with article browser, tweet composer, post history, and settings
+- **X API v2 integration** — OAuth 1.0a posting with detailed error handling
+- **Security** — Login rate limiting, salted password hashing, security headers, input validation
 
 ## Quick Start
 
 ```bash
 # Clone
-git clone https://github.com/AInewsflow/auto-poster.git
+git clone https://github.com/oezercet/auto-poster.git
 cd auto-poster
 
-# Install
+# Install dependencies
 npm install
 
 # Configure
@@ -42,26 +45,26 @@ Copy `config.example.json` to `config.json` and fill in:
 
 | Field | Description |
 |-------|-------------|
-| `sites` | Array of sites to crawl `{url, name, topics?}` |
+| `sites` | Array of news sites to crawl `{url, name, topics?}` |
 | `topics` | General topics for Google News search |
-| `schedule.times` | Post times in HH:MM format |
+| `schedule.times` | Posting times in HH:MM format |
 | `schedule.timezone` | IANA timezone (e.g. `Europe/Berlin`) |
-| `geminiApiKey` | Google Gemini API key ([get one](https://aistudio.google.com/apikey)) |
-| `twitter.*` | Twitter API v2 credentials ([developer portal](https://developer.x.com)) |
+| `geminiApiKey` | Google Gemini API key ([get one free](https://aistudio.google.com/apikey)) |
+| `twitter.*` | X (Twitter) API v2 credentials ([developer portal](https://developer.x.com)) |
 | `adminPassword` | Dashboard login password |
-| `language` | Tweet language code (`tr`, `en`, `de`, `fr`, etc.) |
+| `language` | Tweet language code (`tr`, `en`, `de`, `fr`, `es`, `it`, `pt`, `nl`, `ar`, `ru`, `ja`, `ko`, `zh`) |
 | `style` | Tweet style: `mixed`, `summary`, `comment`, or `info` |
 
 ## API Keys
 
-### Gemini API (Free)
+### Google Gemini API (Free)
 1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
 2. Create an API key
 3. Free tier: 1000 requests/day (gemini-2.5-flash-lite)
 
-### Twitter API (Free)
+### X (Twitter) API (Free)
 1. Go to [X Developer Portal](https://developer.x.com)
-2. Create a project/app
+2. Create a project and app
 3. Set app permissions to **Read and Write**
 4. Generate API Key, API Secret, Access Token, Access Token Secret
 
@@ -88,14 +91,30 @@ location /poster/ {
 }
 ```
 
+## How It Works
+
+1. **Crawl** — Fetches articles from configured news sites via RSS/HTML/JSON-LD parsing
+2. **Filter** — Removes duplicates and articles older than 48 hours
+3. **Generate** — Sends article summary to Google Gemini AI to create a tweet
+4. **Resolve URLs** — Converts Google News redirect URLs to real article links
+5. **Post** — Publishes the tweet to X via API v2
+
 ## Tech Stack
 
 - **Runtime:** Node.js + TypeScript
-- **Web:** Express 5
-- **Crawling:** Cheerio (RSS/HTML/JSON-LD parsing)
-- **AI:** Google Gemini API (flash-lite models)
-- **Twitter:** twitter-api-v2
+- **Web framework:** Express 5
+- **News crawling:** Cheerio (RSS, HTML, JSON-LD parsing)
+- **AI:** Google Gemini API (flash-lite models with fallback chain)
+- **Social media:** twitter-api-v2 (X API v2, OAuth 1.0a)
 - **Scheduling:** node-cron
+
+## Security
+
+- Login rate limiting (5 attempts per 15 minutes)
+- Salted password hashing
+- Security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+- Input validation and sanitization
+- HttpOnly session cookies
 
 ## License
 
